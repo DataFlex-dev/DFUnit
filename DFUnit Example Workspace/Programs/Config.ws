@@ -1,8 +1,10 @@
 [Workspace]
-Home=..\
-AppSrcPath=.\AppSrc
-IdeSrcPath=.\IdeSrc
-DataPath=.\
-DDSrcPath=.\
-ProgramPath=.\Programs
-FileList=.\DummyFilelist.cfg
+Home=..
+AppHTMLPath=
+AppSrcPath=AppSrc
+DataPath=Data
+DDSrcPath=
+IdeSrcPath=IdeSrc
+ProgramPath=Programs
+FileList=DummyFilelist.cfg
+Description=DFUnit-Sample.dev
