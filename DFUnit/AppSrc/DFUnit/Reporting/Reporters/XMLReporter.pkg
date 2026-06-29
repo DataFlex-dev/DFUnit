@@ -4,6 +4,18 @@ Use DFUNit\Results\ResultCollector.pkg
 
 Define XML_NEWLINE_REPLACE for "&#10;"
 
+{ Visibility=Private }
+Function DFUnit_XmlEscape Global String sText Returns String
+    //  Escape XML metacharacters so test names and messages stay well-formed
+    //  inside double-quoted attributes. '&' MUST be replaced first, otherwise the
+    //  ampersands in the entities it produces would be escaped again.
+    Move (Replaces("&", sText, "&amp;")) to sText
+    Move (Replaces("<", sText, "&lt;")) to sText
+    Move (Replaces(">", sText, "&gt;")) to sText
+    Move (Replaces('"', sText, "&quot;")) to sText
+    Function_Return sText
+End_Function
+
 Class cDFUnitXMLReporter is a cDFUnitResultCollector_Mixin
     
     Procedure Construct_Object
@@ -35,7 +47,7 @@ Class cDFUnitXMLReporter is a cDFUnitResultCollector_Mixin
             Move ('time="' + String(SpanTotalSeconds(tsTook)) + "." + String(SpanMilliseconds(tsTook)) + '"') to sTime
         End
 
-        Send Write (SFormat('<testcase name="%1" assertions="%2" %3>', TestName(oTestResult.hTest), oTestResult.ulFailedAssertions + oTestResult.ulSucceededAssertions, Replaces(",", sTime, ".")))        
+        Send Write (SFormat('<testcase name="%1" assertions="%2" %3>', DFUnit_XmlEscape(TestName(oTestResult.hTest)), oTestResult.ulFailedAssertions + oTestResult.ulSucceededAssertions, Replaces(",", sTime, ".")))
         
         Move (SizeOfArray(oTestResult.aErrors) - 1) to iMaxIndex
         For iIterator from 0 to iMaxIndex
@@ -50,9 +62,9 @@ Class cDFUnitXMLReporter is a cDFUnitResultCollector_Mixin
             Move (Append(sMessage, (SFormat("Line: %1." + XML_NEWLINE_REPLACE, oTestResult.aErrors[iIterator].iErrLine)))) to sMessage
             Move (Append(sMessage, (SFormat("Error Nr: %1." + XML_NEWLINE_REPLACE, oTestResult.aErrors[iIterator].iErrorCode)))) to sMessage
             Move (Append(sMessage, "Error Message:" + XML_NEWLINE_REPLACE)) to sMessage
-            Move (Append(sMessage, ("'" + oTestResult.aErrors[iIterator].sErrText + "'." + XML_NEWLINE_REPLACE))) to sMessage
+            Move (Append(sMessage, ("'" + DFUnit_XmlEscape(oTestResult.aErrors[iIterator].sErrText) + "'." + XML_NEWLINE_REPLACE))) to sMessage
             Move (Append(sMessage, "CallStack:" + XML_NEWLINE_REPLACE)) to sMessage
-            Move (Append(sMessage, oTestResult.aErrors[iIterator].sCallStack)) to sMessage
+            Move (Append(sMessage, DFUnit_XmlEscape(oTestResult.aErrors[iIterator].sCallStack))) to sMessage
             
             Move (Replaces("\n", sMessage, XML_NEWLINE_REPLACE)) to sMessage
             Move (Replaces("\r\n", sMessage, XML_NEWLINE_REPLACE)) to sMessage
@@ -63,12 +75,12 @@ Class cDFUnitXMLReporter is a cDFUnitResultCollector_Mixin
         
         Move (SizeOfArray(oTestResult.aFailedAssertions) - 1) to iMaxIndex
         For iIterator from 0 to iMaxIndex
-            Move (oTestResult.aFailedAssertions[iIterator].sAssertMessage + XML_NEWLINE_REPLACE) to sMessage
-            
+            Move (DFUnit_XmlEscape(oTestResult.aFailedAssertions[iIterator].sAssertMessage) + XML_NEWLINE_REPLACE) to sMessage
+
             Move oTestResult.aFailedAssertions[iIterator].asMessages to asMessages
             Move (SizeOfArray(asMessages) - 1) to iMaxMessageIndex
             For iMessageIterator from 0 to iMaxMessageIndex
-                Move (Append(sMessage, asMessages[iMessageIterator] + XML_NEWLINE_REPLACE)) to sMessage
+                Move (Append(sMessage, DFUnit_XmlEscape(asMessages[iMessageIterator]) + XML_NEWLINE_REPLACE)) to sMessage
             Loop
             
             Move (Replaces("\n", sMessage, XML_NEWLINE_REPLACE)) to sMessage
@@ -88,7 +100,7 @@ Class cDFUnitXMLReporter is a cDFUnitResultCollector_Mixin
         Get ResultOfFixture hFixture to oFixtureResult
         
         Get FixtureName of hFixture to sFixtureName
-        Send Write (SFormat('<testsuite name="%1" errors="%2" failures="%3">', sFixtureName, oFixtureResult.ulTotalErrors, oFixtureResult.ulTotalFailedAssertions))
+        Send Write (SFormat('<testsuite name="%1" errors="%2" failures="%3">', DFUnit_XmlEscape(sFixtureName), oFixtureResult.ulTotalErrors, oFixtureResult.ulTotalFailedAssertions))
         
         Integer iIterator iMaxIndex
         Move (SizeOfArray(oFixtureResult.ahChildFixtures) - 1) to iMaxIndex
