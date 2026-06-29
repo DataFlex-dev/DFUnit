@@ -141,6 +141,12 @@ Class cDFUnitXMLReporter is a cDFUnitResultCollector_Mixin
         Send Write '</testsuites>'
         
         Close_Output channel iChannel
+        Send Seq_Release_Channel iChannel
+        //  Restore the current output channel to the default (channel 1). After
+        //  Close_Output the global "current output channel" still points at the
+        //  channel we just released; when a console run exits via ExitProcess the
+        //  runtime dereferences that dangling pointer and intermittently crashes.
+        Append_Output Channel 1
         Set piChannel to -1
     End_Procedure
     
