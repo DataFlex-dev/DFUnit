@@ -1,4 +1,8 @@
-[Properties]
-Version=20.1
-[WorkspacePaths]
-ConfigFile=.\Config.ws
+{
+    "description": "DataFlex Unit Testing Framework",
+    "df": 26.0,
+    "package": {
+        "icon": "DFUnit.png",
+        "version": "1.0.1"
+    }
+}

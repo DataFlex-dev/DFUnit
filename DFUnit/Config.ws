@@ -1,12 +1,12 @@
 [Workspace]
-Home=.\
-AppSrcPath=.\AppSrc
-AppHTMLPath=.\
-BitmapPath=.\Bitmaps
-IdeSrcPath=.\IdeSrc
-DataPath=.\
-DDSrcPath=.\
-HelpPath=.\
-ProgramPath=.\
-FileList=.\DummyFilelist.cfg
-Description=DFUnit Testing Framework
+Home=.
+AppHTMLPath=
+AppSrcPath=AppSrc
+DataPath=
+DDSrcPath=
+BitmapPath=Bitmaps
+IdeSrcPath=IdeSrc
+HelpPath=Help
+ProgramPath=
+FileList=DummyFilelist.cfg
+Description=DataFlex Unit Testing Framework

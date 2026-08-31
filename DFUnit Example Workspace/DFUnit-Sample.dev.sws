@@ -1,15 +1,15 @@
 {
     "dependencies": [
-        "DataFlex-dev/DFUnit#1.0.1"
+        "../DFUnit/DFUnit.sws"
     ],
     "df": 26.0,
+    "paths": {
+        "fileList": "DummyFilelist.cfg"
+    },
     "projects": [
         "RunAllTests.src"
     ],
     "studio": {
         "DefaultFormHeight": 12
-    },
-    "paths": {
-        "fileList": "Data/DummyFilelist.cfg"
     }
 }

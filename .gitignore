@@ -19,3 +19,4 @@
 
 # Ignore xml output of DFUnit
 **/test_results.xml
+**/DfPkg
