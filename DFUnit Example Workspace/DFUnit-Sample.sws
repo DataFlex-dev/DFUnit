@@ -3,17 +3,13 @@
         "DataFlex-dev/DFUnit#1.0.1"
     ],
     "df": 26.0,
-    "package": {
-        "df-max": 26.0,
-        "df-min": 26.0
-    },
-    "paths": {
-        "fileList": "DummyFilelist.cfg"
-    },
     "projects": [
         "RunAllTests.src"
     ],
     "studio": {
         "DefaultFormHeight": 12
+    },
+    "paths": {
+        "fileList": "Data/DummyFilelist.cfg"
     }
 }

@@ -8,3 +8,4 @@ IdeSrcPath=IdeSrc
 ProgramPath=Programs
 FileList=DummyFilelist.cfg
 Description=DFUnit-Sample.dev
+FileList=Data\DummyFilelist.cfg
