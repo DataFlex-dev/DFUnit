@@ -110,6 +110,8 @@ End_Procedure
 
 `pbUseUI`, Indicates whether the UI or Console should run by default.
 
+`pbConsoleWait`, **[Advanced]** when True, waits for a key before a native console run exits.
+
 ### Console options
 
 `--help (-h)`, will print the DFUnit framework information.
@@ -121,3 +123,7 @@ End_Procedure
 `--no-autorun (-n)`, will override the `pbAutoRunTests` to False.
 
 `--output (-o)`, will output the test data to the designated file **(JUnit-XML only for now)**.
+
+`--junit`, writes JUnit XML to the console.
+
+`--junit-file`, writes console output and JUnit XML to the designated file.
