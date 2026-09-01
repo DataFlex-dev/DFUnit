@@ -1,5 +1,5 @@
+Use DFUnit\Reporting\Reporters\XMLReporter.pkg
 #IFNDEF IS$CROSS_PLATFORM
 Use DFUnit\Reporting\Reporters\UIListReporter.pkg
-Use DFUnit\Reporting\Reporters\XMLReporter.pkg
 #ENDIF
 Use DFUnit\Reporting\Reporters\ConsoleReporter.pkg

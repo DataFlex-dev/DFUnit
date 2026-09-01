@@ -60,6 +60,7 @@ Class cDFUnitTestApplication is a cDFUnitFixture
         Handle hoCommandLine
         Integer iArgCount iIndex
         String sArgument
+        Handle hoReporter
 
         Get phoCommandLine of ghoApplication to hoCommandLine
         Get CountOfArgs of hoCommandLine to iArgCount
@@ -85,6 +86,25 @@ Class cDFUnitTestApplication is a cDFUnitFixture
 #ENDIF
                 Case (sArgument = "-n" or sArgument = "--no-autorun")
                     Set pbAutoRunTests to False
+                    Case Break
+                Case (sArgument = "--junit")
+                    Get Create (RefClass(cDFUnitJunitReporter)) to hoReporter
+                    Send AddReporterByName "junit" hoReporter
+                    Case Break
+                Case (sArgument = "--junit-file")
+                    If (iArgCount - iIndex <= 0) Begin
+                        Send DFUnit_ConsoleWriteLn "No outputfile has been specified."
+                        Send DFUnit_ConsoleExit -1
+                    End
+
+                    Increment iIndex
+                    Move (Argument(hoCommandLine, iIndex)) to sArgument
+
+                    Get Create (RefClass(cDFUnitConsoleReporter)) to hoReporter
+                    Send AddReporterByName "console" hoReporter
+                    Get Create (RefClass(cDFUnitJunitReporter)) to hoReporter
+                    Set psOutputFileName of hoReporter to sArgument
+                    Send AddReporterByName "junit-file" hoReporter
                     Case Break
 #IFNDEF IS$CROSS_PLATFORM
                 Case (sArgument = "-o" or sArgument = "--output")
@@ -125,9 +145,11 @@ Class cDFUnitTestApplication is a cDFUnitFixture
             Procedure_Return
         End
 #ENDIF
-        Object oConsoleReporter is a cDFUnitConsoleReporter
-        End_Object
-        Send AddReporter oConsoleReporter
+        If (ReporterCount(Self) = 0) Begin
+            Handle hoReporter
+            Get Create (RefClass(cDFUnitConsoleReporter)) to hoReporter
+            Send AddReporterByName "console" hoReporter
+        End
         Send ManualRunTests
 
         If (pbConsoleWait(Self)) Begin
@@ -153,6 +175,10 @@ Class cDFUnitTestApplication is a cDFUnitFixture
     End_Procedure    
     
     // Overrides for the cDFUnitFixture /////////////////////////////
+
+    Function FullFixtureName Returns String
+        Function_Return ""
+    End_Function
     
     { Visibility=Private }
     Procedure SetupFixture
@@ -168,4 +194,8 @@ Class cDFUnitTestApplication is a cDFUnitFixture
         Send AfterTearDown
     End_Procedure
 
+End_Class
+
+{ ComponentType=WebAppAjaxClass }
+Class cWebDfUnitTestApplication is a cDFUnitTestApplication
 End_Class

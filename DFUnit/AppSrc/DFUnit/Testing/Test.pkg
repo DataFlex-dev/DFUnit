@@ -28,6 +28,18 @@ Class cDFUnitTest is a cObject
             Function_Return (Object_Label(Self))
         End
     End_Function
+
+    { Visibility=Private }
+    Function FullTestName Returns String
+        String sPrev
+        Delegate Get FullFixtureName to sPrev
+        If (SizeOfString(sPrev)) Begin
+            Function_Return (sPrev + "." + (TestName(Self)))
+        End
+        Else Begin
+            Function_Return (TestName(Self))
+        End
+    End_Function
     
     Procedure Test
         Error DFERR_PROGRAM (SFormat("The test '%1' does not contain a test procedure.", TestName(Self)))

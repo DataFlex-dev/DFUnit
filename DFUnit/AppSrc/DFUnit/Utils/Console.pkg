@@ -42,10 +42,9 @@ End_Procedure
 
 Procedure DFUnit_ConsoleWait Global Integer iOptExitCode
     Integer iVoid
-
-    If (RuntimePlatformId() <> C_RuntimePlaformId_WASM) Begin
-        Inkey iVoid
-    End
+#IFNDEF IS$PLATFORM_WEBASSEMBLY
+    Inkey iVoid
+#ENDIF
 End_Procedure
 
 { Visibility=Private }

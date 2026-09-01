@@ -4,13 +4,18 @@ Use DFUnit\Globals.pkg
 Use DFUnit\Utils\ErrorSystem.pkg
 Use DFUnit\Utils\Debugger.pkg
 
+Struct tDFUnitExpectedError
+    Integer iErrorNumber
+    UInteger uiCount
+End_Struct
+
 Class cDFUnitErrorTracker is a cObject
     
     Procedure Construct_Object
         Move Self to ghoErrorTracker
         
         {Visibility=Private}
-        Property Integer[] paExpectedErrors
+        Property tDFUnitExpectedError[] paExpectedErrors
         {Visibility=Private}
         Property tDFUnitErrorInfo[] paErrorStack
         {Visibility=Private}
@@ -27,20 +32,19 @@ Class cDFUnitErrorTracker is a cObject
     End_Function
     
     Procedure ExpectError Integer iErrNum
-        Integer iIndex
-        Integer[] aExpectedErrors
+        tDFUnitExpectedError[] aExpectedErrors
         Get paExpectedErrors to aExpectedErrors
-        Move iErrNum to aExpectedErrors[SizeOfArray(aExpectedErrors)]
+        Move iErrNum to aExpectedErrors[SizeOfArray(aExpectedErrors)].iErrorNumber
         Set paExpectedErrors to aExpectedErrors
     End_Procedure
     
     Function WasErrorExpected Integer iErrNum Returns Boolean
         Integer iIndex
-        Integer[] aExpectedErrors
+        tDFUnitExpectedError[] aExpectedErrors
         Get paExpectedErrors to aExpectedErrors
         
         For iIndex from 0 to (SizeOfArray(aExpectedErrors) - 1)
-            If (aExpectedErrors[iIndex] = iErrNum) ;
+            If (aExpectedErrors[iIndex].iErrorNumber = iErrNum) ;
                 Function_Return True
         Loop
         
@@ -55,14 +59,20 @@ Class cDFUnitErrorTracker is a cObject
         // Otherwise an error is counted.
     End_Procedure
     
+    {Visibility=Private}
+    Procedure Tracker_ExpectedError_Did_Not_Occur tDFUnitErrorInfo oError
+    End_Procedure
+
     Procedure UnExpectError Integer iErrNum
         Integer iIndex
-        Integer[] aExpectedErrors
+        tDFUnitExpectedError[] aExpectedErrors
         Get paExpectedErrors to aExpectedErrors
         
         If (num_arguments > 0) Begin
             For iIndex from 0 to (SizeOfArray(aExpectedErrors) - 1)
-                If (aExpectedErrors[iIndex] = iErrNum) Begin
+                If (aExpectedErrors[iIndex].iErrorNumber = iErrNum) Begin
+                    If (aExpectedErrors[iIndex].uiCount = 0) ;
+                        Send ReportExpectedErrorDidNotOccur aExpectedErrors[iIndex].iErrorNumber
                     Move (RemoveFromArray(aExpectedErrors, iIndex)) to aExpectedErrors
                     Set paExpectedErrors to aExpectedErrors
                     Procedure_Return
@@ -76,9 +86,18 @@ Class cDFUnitErrorTracker is a cObject
                 Procedure_Return
             End
             
+            If (aExpectedErrors[iIndex].uiCount = 0) ;
+                Send ReportExpectedErrorDidNotOccur aExpectedErrors[iIndex].iErrorNumber
             Move (RemoveFromArray(aExpectedErrors, iIndex)) to aExpectedErrors
             Set paExpectedErrors to aExpectedErrors
         End
+    End_Procedure
+
+    {Visibility=Private}
+    Procedure ReportExpectedErrorDidNotOccur Integer iErrorNumber
+        tDFUnitErrorInfo oError
+        Move iErrorNumber to oError.iErrorCode
+        Send ThrowErrorEvent (RefProc(Tracker_ExpectedError_Did_Not_Occur)) oError
     End_Procedure
     
     {Visibility=Private}
@@ -103,7 +122,7 @@ Class cDFUnitErrorTracker is a cObject
     
     {Visibility=Private}
     Procedure ClearErrorTracker
-        Integer[] aEmptyExpectedErrors
+        tDFUnitExpectedError[] aEmptyExpectedErrors
         tDFUnitErrorInfo[] aEmptyErrors
         Set paErrorStack to aEmptyErrors
         Set paAllErrors to aEmptyErrors
@@ -157,7 +176,7 @@ Class cDFUnitErrorTracker is a cObject
     {Visibility=Private}
     Function CheckExpectedErrorsAndClean Returns Boolean
         Boolean bEmpty
-        Integer[] aExpectedErrors aEmptyExpectedErrors
+        tDFUnitExpectedError[] aExpectedErrors aEmptyExpectedErrors
         Get paExpectedErrors to aExpectedErrors
         Move (SizeOfArray(aExpectedErrors) = 0) to bEmpty
         Set paExpectedErrors to aEmptyExpectedErrors
@@ -180,7 +199,16 @@ Class cDFUnitErrorTracker is a cObject
     
     {Visibility=Private}
     Procedure Tracker_ExpectedError_Occured tDFUnitErrorInfo oError
-        // Stub
+        Integer iIndex
+        tDFUnitExpectedError[] aExpectedErrors
+        Get paExpectedErrors to aExpectedErrors
+
+        For iIndex from 0 to (SizeOfArray(aExpectedErrors) - 1)
+            If (aExpectedErrors[iIndex].iErrorNumber = oError.iErrorCode) ;
+                Increment aExpectedErrors[iIndex].uiCount
+        Loop
+
+        Set paExpectedErrors to aExpectedErrors
     End_Procedure
     
     {Visibility=Private}

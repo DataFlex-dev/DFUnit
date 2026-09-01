@@ -32,7 +32,7 @@ Class cDFUnitLineBasedReporter_Mixin is a Mixin
         Get Current_Fixture of hEnv to hFixture
         
         Send IncreaseScope
-        Send PrintLn (FixtureName(hFixture))
+        Send PrintLn (FullFixtureName(hFixture))
     End_Procedure
     
     Procedure EndFixture Handle hEnv
@@ -44,7 +44,7 @@ Class cDFUnitLineBasedReporter_Mixin is a Mixin
         Get Current_Test of hEnv to hTest
         
         Send IncreaseScope
-        Send Print (TestName(hTest))
+        Send Print (FullTestName(hTest))
     End_Procedure
     
     Procedure Set Color Integer iColor

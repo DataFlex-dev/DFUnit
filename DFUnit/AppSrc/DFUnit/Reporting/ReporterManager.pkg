@@ -1,30 +1,111 @@
 ﻿Use DFUnit\Reporting\ReporterInterface.pkg
 
 Class cDFUnitReporterManager_Mixin is a Mixin
-    
+
     Procedure Define_cDFUnitReporterManager_Mixin
+        Property String[] psReporters
         Property Handle[] paReporters
     End_Procedure
     
-    Procedure AddReporter Handle hReporter
+    Function ReporterCount Returns Integer
         Handle[] aReporters
         Get paReporters to aReporters
+        Function_Return (SizeOfArray(aReporters))
+    End_Function
+
+    Procedure AddReporter Handle hReporter
+        Handle[] aReporters
+        String[] sReporters
+
+        Get paReporters to aReporters
+        Get psReporters to sReporters
+
+        Move "" to sReporters[SizeOfArray(aReporters)]
         Move hReporter to aReporters[SizeOfArray(aReporters)]
+
         Set paReporters to aReporters
+        Set psReporters to sReporters
+    End_Procedure
+
+    Procedure AddReporterByName String sReporter Handle hReporter
+        Handle[] aReporters
+        String[] sReporters
+
+        Get paReporters to aReporters
+        Get psReporters to sReporters
+
+        Move sReporter to sReporters[SizeOfArray(aReporters)]
+        Move hReporter to aReporters[SizeOfArray(aReporters)]
+
+        Set paReporters to aReporters
+        Set psReporters to sReporters
+    End_Procedure
+
+    Function ReporterByIndex Integer iReporter Returns Handle
+        Handle[] aReporters
+
+        Get paReporters to aReporters
+
+        If (iReporter >= 0 and iReporter < SizeOfArray(aReporters)) Begin
+            Function_Return aReporters[iReporter]
+        End
+
+        Function_Return 0
+    End_Function
+
+    Function ReporterByName String sReporter Returns Handle
+        Integer iIterator
+        Handle[] aReporters
+        String[] sReporters
+
+        Get paReporters to aReporters
+        Get psReporters to sReporters
+
+        For iIterator from 0 to (SizeOfArray(sReporters) - 1)
+            If (sReporters[iIterator] = sReporter) Begin
+                Function_Return aReporters[iIterator]
+            End
+        Loop
+
+        Function_Return 0
+    End_Function
+
+    Procedure RemoveReporterByName String sReporter
+        Integer iIterator
+        Handle[] aReporters
+        String[] sReporters
+
+        Get paReporters to aReporters
+        Get psReporters to sReporters
+
+        For iIterator from 0 to (SizeOfArray(sReporters) - 1)
+            If (sReporters[iIterator] = sReporter) Begin
+                Move (RemoveFromArray(aReporters, iIterator)) to aReporters
+                Move (RemoveFromArray(sReporters, iIterator)) to sReporters
+            End
+        Loop
+
+        Set paReporters to aReporters
+        Set psReporters to sReporters
     End_Procedure
 
     Procedure RemoveReporter Handle hReporter
         Integer iIterator
         Handle[] aReporters
+        String[] sReporters
+
         Get paReporters to aReporters
+        Get psReporters to sReporters
         
         For iIterator from 0 to (SizeOfArray(aReporters) - 1)
             If (aReporters[iIterator] = hReporter) Begin
                 Move (RemoveFromArray(aReporters, iIterator)) to aReporters
+                Move (RemoveFromArray(sReporters, iIterator)) to sReporters
             End
         Loop
         
         Set paReporters to aReporters
+        Set psReporters to sReporters
     End_Procedure
     
     { Visibility=Private }
@@ -86,7 +167,6 @@ Class cDFUnitReporterManager_Mixin is a Mixin
         Send SendMessageToReporters (RefProc(Finish)) hEnv
     End_Procedure
     
-    { Visibility=Private }
     Procedure SendMessageToReporters Handle hMessage Handle hEnv
         Integer iIterator
         Handle[] aReporters

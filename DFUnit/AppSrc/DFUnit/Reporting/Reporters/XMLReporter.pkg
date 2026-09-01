@@ -1,4 +1,8 @@
+﻿#IFDEF IS$CROSS_PLATFORM
+Use System\FileSystem.pkg
+#ELSE
 Use seq_chnl.pkg
+#ENDIF
 
 Use DFUNit\Results\ResultCollector.pkg
 
@@ -6,9 +10,6 @@ Define XML_NEWLINE_REPLACE for "&#10;"
 
 { Visibility=Private }
 Function DFUnit_XmlEscape Global String sText Returns String
-    //  Escape XML metacharacters so test names and messages stay well-formed
-    //  inside double-quoted attributes. '&' MUST be replaced first, otherwise the
-    //  ampersands in the entities it produces would be escaped again.
     Move (Replaces("&", sText, "&amp;")) to sText
     Move (Replaces("<", sText, "&lt;")) to sText
     Move (Replaces(">", sText, "&gt;")) to sText
@@ -16,20 +17,35 @@ Function DFUnit_XmlEscape Global String sText Returns String
     Function_Return sText
 End_Function
 
-Class cDFUnitXMLReporter is a cDFUnitResultCollector_Mixin
+Class cDFUnitJunitReporter is a cDFUnitResultCollector_Mixin
     
     Procedure Construct_Object
-        Property String psFileName "test_results.xml"
+        Property String psOutputFileName ""
         
         { Visibility=Private }
         Property Integer piChannel -1
         
         Send Define_cDFUnitResultCollector_Mixin
     End_Procedure
+
+    Function SupportsOutputToFile Returns Boolean
+        Function_Return True
+    End_Function
     
     {Visibility=Private}
     Procedure Write String sText
-        Write channel (piChannel(Self)) sText
+        String sFile
+        Get psOutputFileName to sFile
+        If (SizeOfString(sFile)) Begin
+#IFDEF IS$CROSS_PLATFORM
+            Write sText
+#ELSE
+            Write channel (piChannel(Self)) sText
+#ENDIF
+        End
+        Else Begin
+            Send DFUnit_ConsoleWrite sText
+        End
     End_Procedure
     
     {Visibility=Private}
@@ -51,6 +67,7 @@ Class cDFUnitXMLReporter is a cDFUnitResultCollector_Mixin
         
         Move (SizeOfArray(oTestResult.aErrors) - 1) to iMaxIndex
         For iIterator from 0 to iMaxIndex
+            Move "" to sErrorExtenders
             If (oTestResult.aErrors[iIterator].bFatal) Begin
                 Move "Fatal" to sErrorExtenders
             End
@@ -65,7 +82,6 @@ Class cDFUnitXMLReporter is a cDFUnitResultCollector_Mixin
             Move (Append(sMessage, ("'" + DFUnit_XmlEscape(oTestResult.aErrors[iIterator].sErrText) + "'." + XML_NEWLINE_REPLACE))) to sMessage
             Move (Append(sMessage, "CallStack:" + XML_NEWLINE_REPLACE)) to sMessage
             Move (Append(sMessage, DFUnit_XmlEscape(oTestResult.aErrors[iIterator].sCallStack))) to sMessage
-            
             Move (Replaces("\n", sMessage, XML_NEWLINE_REPLACE)) to sMessage
             Move (Replaces("\r\n", sMessage, XML_NEWLINE_REPLACE)) to sMessage
             Move (Replaces(Character(10), sMessage, XML_NEWLINE_REPLACE)) to sMessage
@@ -82,7 +98,6 @@ Class cDFUnitXMLReporter is a cDFUnitResultCollector_Mixin
             For iMessageIterator from 0 to iMaxMessageIndex
                 Move (Append(sMessage, DFUnit_XmlEscape(asMessages[iMessageIterator]) + XML_NEWLINE_REPLACE)) to sMessage
             Loop
-            
             Move (Replaces("\n", sMessage, XML_NEWLINE_REPLACE)) to sMessage
             Move (Replaces("\r\n", sMessage, XML_NEWLINE_REPLACE)) to sMessage
             Move (Replaces(Character(10), sMessage, XML_NEWLINE_REPLACE)) to sMessage
@@ -120,34 +135,69 @@ Class cDFUnitXMLReporter is a cDFUnitResultCollector_Mixin
     Procedure Finish Handle hEnv
         Forward Send Finish
         
-        Boolean bExists
+        Boolean bExists bOk
         String sFileName
-        Get psFileName to sFileName
-        File_Exist sFileName bExists
-        If bExists Begin
-            EraseFile sFileName
-        End
-        
         Integer iChannel
-        Move (Seq_New_Channel()) to iChannel
-        Direct_Output channel iChannel ('BINARY: ' + sFileName)
-        Set piChannel to iChannel
-        
+        Get psOutputFileName to sFileName
+
+        If (SizeOfString(sFileName)) Begin
+#IFDEF IS$CROSS_PLATFORM
+            File_Exist sFileName to bExists
+            If (bExists) Begin
+                Erase_File sFileName
+            End
+
+            Send DFUnit_ConsoleWriteLn (SFormat("[DFUnit] junit (XML): %1", sFileName))
+            Direct_Output sFileName
+            Move (not(SeqEof)) to bOk
+            If (SeqEof) Begin
+                Error 871 "Failed to open the junit file."
+            End
+#ELSE
+            File_Exist sFileName bExists
+            If (bExists) Begin
+                EraseFile sFileName
+            End
+
+            Move (Seq_New_Channel()) to iChannel
+            Direct_Output channel iChannel ('BINARY: ' + sFileName)
+            Set piChannel to iChannel
+#ENDIF
+        End
+
         Send Write '<?xml version="1.0" encoding="UTF-8"?>'
         Send Write '<testsuites>'
         
         Send WriteFixture ghoTestApplication
         
         Send Write '</testsuites>'
-        
-        Close_Output channel iChannel
-        Send Seq_Release_Channel iChannel
-        //  Restore the current output channel to the default (channel 1). After
-        //  Close_Output the global "current output channel" still points at the
-        //  channel we just released; when a console run exits via ExitProcess the
-        //  runtime dereferences that dangling pointer and intermittently crashes.
-        Append_Output Channel 1
-        Set piChannel to -1
+
+        If (SizeOfString(sFileName)) Begin
+#IFDEF IS$CROSS_PLATFORM
+            If (bOk) Close_Output
+#ELSE
+            Close_Output channel iChannel
+            Send Seq_Release_Channel iChannel
+            Append_Output Channel 1
+            Set piChannel to -1
+#ENDIF
+        End
     End_Procedure
     
+End_Class
+
+Class cDFUnitXMLReporter is a cDFUnitJunitReporter
+
+    Procedure Construct_Object
+        Forward Send Construct_Object
+        Property String psFileName "test_results.xml"
+    End_Procedure
+
+    Procedure Finish Handle hEnv
+        String sFileName
+        Get psFileName to sFileName
+        Set psOutputFileName to sFileName
+        Forward Send Finish hEnv
+    End_Procedure
+
 End_Class

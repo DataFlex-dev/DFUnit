@@ -32,6 +32,18 @@ Class cDFUnitFixture is a cObject
             Function_Return (Object_Label(Self))
         End
     End_Function
+
+    { Visibility=Private }
+    Function FullFixtureName Returns String
+        String sPrev
+        Delegate Get FullFixtureName to sPrev
+        If (SizeOfString(sPrev)) Begin
+            Function_Return (sPrev + "." + (FixtureName(Self)))
+        End
+        Else Begin
+            Function_Return (FixtureName(Self))
+        End
+    End_Function
     
     Procedure BeforeSetupOneTime
     End_Procedure

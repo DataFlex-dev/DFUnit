@@ -178,6 +178,11 @@ Class cDFUnitTestRunner_Mixin is a Mixin
     Procedure Tracker_ExpectedError_Occured tDFUnitErrorInfo oError
     End_Procedure
     
+
+    { Visibility=Private }
+    Procedure Tracker_ExpectedError_Did_Not_Occur tDFUnitErrorInfo oError
+        Send Assert False (SFormat("An expected error did not occur. Error Number: %1", oError.iErrorCode))
+    End_Procedure
     { Visibility=Private }
     Procedure Tracker_UnExpectedError_Occured tDFUnitErrorInfo oError
         UBigInt ulErrors
