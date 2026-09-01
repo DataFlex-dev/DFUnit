@@ -1,5 +1,3 @@
-﻿Use GlobalFunctionsProcedures.pkg
-
 Class cLeapYear is a cObject
     Function DivisibleBy Integer iDividend Integer iDivisor Returns Boolean
         Function_Return (Mod(iDividend, iDivisor) = 0)

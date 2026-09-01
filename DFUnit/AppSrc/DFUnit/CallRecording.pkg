@@ -1,4 +1,3 @@
-#IFDEF DFUNIT_ENABLE_MESSAGE_CALL_TESTING
 Use UI
 
 { Visibility=Private }
@@ -64,5 +63,3 @@ Function DFUnit_HasMessageBeenCalledOnObject Global Handle hObject Handle hMessa
 
     Function_Return False
 End_Function
-
-#ENDIF

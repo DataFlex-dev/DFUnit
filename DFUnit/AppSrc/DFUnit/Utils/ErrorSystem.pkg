@@ -1,4 +1,8 @@
+#IFDEF IS$CROSS_PLATFORM
+Use System\ErrorSystem.pkg
+#ELSE
 Use Dferror.pkg
+#ENDIF
 
 Use DFUnit\Globals.pkg
 
@@ -11,6 +15,56 @@ Struct tDFUnitErrorInfo
     Boolean bUser
 End_Struct
 
+#IFDEF IS$CROSS_PLATFORM
+Class cDFUnitErrorSystem is a cBaseErrorHandler
+    Procedure Construct_Object
+        Handle hPreviousErrorHandler
+        Move Error_Object_Id to hPreviousErrorHandler
+        Forward Send Construct_Object
+        Move hPreviousErrorHandler to Error_Object_Id
+
+        Property Handle poPreviousErrorHandler -1
+    End_Procedure
+
+    Function Enabled Returns Boolean
+        Function_Return (poPreviousErrorHandler(Self) <> -1)
+    End_Function
+
+    Procedure EnableHandler
+        If (Enabled(Self)) Begin
+            Send DisableErrorTracker
+            Error DFERR_PROGRAM "The error tracker was already enabled...?"
+        End
+
+        Set poPreviousErrorHandler to Error_Object_Id
+        Move Self to Error_Object_Id
+    End_Procedure
+
+    Procedure DisableHandler
+        If (Enabled(Self) = False) Begin
+            Error DFERR_PROGRAM "The error tracker was already disabled...?"
+        End
+
+        Get poPreviousErrorHandler to Error_Object_Id
+        Set poPreviousErrorHandler to -1
+    End_Procedure
+
+    Procedure HandleError Integer iErrNum Integer iErrLine String sErrText
+        tDFUnitErrorInfo oInfo
+        If (ghoErrorTracker <> 0) Begin
+            CallStackDump oInfo.sCallStack
+            Move iErrNum to oInfo.iErrorCode
+            Move iErrLine to oInfo.iErrLine
+            Move (Trim(sErrText)) to oInfo.sErrText
+
+            Get Is_Critical iErrNum to oInfo.bFatal
+            Move (not(IsUnhandledError(Self, iErrNum))) to oInfo.bUser
+
+            Send TrackError of ghoErrorTracker oInfo
+        End
+    End_Procedure
+End_Class
+#ELSE
 Class cDFUnitErrorSystem is a cObject  
     Procedure Construct_Object
         Set delegation_mode to No_Delegate_Or_Error
@@ -255,3 +309,4 @@ Class cDFUnitErrorSystem is a cObject
         Function_Return (SearchArray(iError,UserErrors)=-1)
     End_Function
 End_Class
+#ENDIF

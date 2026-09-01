@@ -1,8 +1,14 @@
+#IFDEF IS$CROSS_PLATFORM
+Use System\Application.pkg
+#ELSE
 Use cApplication.pkg
-Use Data_Set.pkg
+#ENDIF
 
 Use DFUnit\Version.pkg
+#IFNDEF IS$CROSS_PLATFORM
 Use DFUnit\GUI.pkg
+Use DFUnit\Utils\FileSystem.pkg
+#ENDIF
 Use DFUnit\Utils.pkg
 Use DFUnit\Testing.pkg
 Use DFUnit\Fixturing.pkg
@@ -37,8 +43,10 @@ Class cDFUnitTestApplication is a cDFUnitFixture
         
         Property Boolean pbAutoRun True
         Property Boolean pbAutoRunTests True
+#IFNDEF IS$CROSS_PLATFORM
         Property Boolean pbUseUIIfInDebugger True
         Property Boolean pbUseUI True
+#ENDIF
     End_Procedure
     
     Procedure End_Construct_Object
@@ -50,12 +58,12 @@ Class cDFUnitTestApplication is a cDFUnitFixture
     Procedure ParseEnvironmentFromCommandLine
         Handle hoCommandLine
         Integer iArgCount iIndex
-        String sArgument sTemp
+        String sArgument
 
         Get phoCommandLine of ghoApplication to hoCommandLine
         Get CountOfArgs of hoCommandLine to iArgCount
         
-        For iIndex from 0 to (iArgCount - 1)
+        For iIndex from 1 to iArgCount
             Move (Argument(hoCommandLine, iIndex)) to sArgument
             Case Begin
                 Case (sArgument = "-h" or sArgument = "--help")
@@ -66,15 +74,18 @@ Class cDFUnitTestApplication is a cDFUnitFixture
                     Send DFUnit_ConsoleWriteLn DFUNIT_SUB_VERSION
                     Send DFUnit_ConsoleExit 0
                     Case Break
+#IFNDEF IS$CROSS_PLATFORM
                 Case (sArgument = "-c" or sArgument = "--console")
                     Set pbUseUI to False
                     Case Break
                 Case (sArgument = "-g" or sArgument = "--gui")
                     Set pbUseUI to True
                     Case Break
+#ENDIF
                 Case (sArgument = "-n" or sArgument = "--no-autorun")
                     Set pbAutoRunTests to False
                     Case Break
+#IFNDEF IS$CROSS_PLATFORM
                 Case (sArgument = "-o" or sArgument = "--output")
                     If (iArgCount - iIndex <= 0) Begin
                         Send DFUnit_ConsoleWriteLn "No outputfile has been specified."
@@ -95,34 +106,34 @@ Class cDFUnitTestApplication is a cDFUnitFixture
                     End_Object
                     Send AddReporter oXMLReporter
                     Case Break
+#ENDIF
             Case End
         Loop
     End_Procedure
     
     Procedure AutoRun
-        Boolean bUseUI
         Send ParseEnvironmentFromCommandLine
-        
+#IFNDEF IS$CROSS_PLATFORM
+        Boolean bUseUI
         Get pbUseUI to bUseUI
         
         If (bUseUI or (IsDebuggerPresent() and pbUseUIIfInDebugger(Self))) Begin
             Object oUIApplication is a cDFUnitUIPanel
             End_Object
             Start_UI
+            Procedure_Return
+        End
+#ENDIF
+        Object oConsoleReporter is a cDFUnitConsoleReporter
+        End_Object
+        Send AddReporter oConsoleReporter
+        Send ManualRunTests
+
+        If (TestsSucceeded(Self)) Begin
+            Send DFUnit_ConsoleExit 0
         End
         Else Begin
-            Integer iExitCode
-            Object oConsoleReporter is a cDFUnitConsoleReporter
-            End_Object
-            Send AddReporter oConsoleReporter
-            Send ManualRunTests
-            
-            If (TestsSucceeded(Self)) Begin
-                Send DFUnit_ConsoleExit 0
-            End
-            Else Begin
-                Send DFUnit_ConsoleExit -1
-            End
+            Send DFUnit_ConsoleExit -1
         End
     End_Procedure
     

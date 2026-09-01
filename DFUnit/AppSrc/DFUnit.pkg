@@ -1,2 +1,4 @@
 Use DFUnit\Application.pkg
+#IFDEF DFUNIT_ENABLE_MESSAGE_CALL_TESTING
 Use DFUnit\EnableCallRecording.pkg
+#ENDIF

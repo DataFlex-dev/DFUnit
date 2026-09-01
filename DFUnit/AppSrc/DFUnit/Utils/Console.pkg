@@ -1,15 +1,6 @@
-﻿Use UI
-
+#IFNDEF IS$CROSS_PLATFORM
 { Visibility=Private }
 External_Function DFUnit_WinAPI_ExitProcess "ExitProcess" Kernel32.dll Integer iExitCode Returns Integer
-
-Procedure DFUnit_ConsoleExit Global Integer iOptExitCode
-    Integer iVoid
-    If (num_arguments > 0) ;
-        Move (DFUnit_WinAPI_ExitProcess(iOptExitCode)) to iVoid
-    Else
-        Move (DFUnit_WinAPI_ExitProcess(0)) to iVoid
-End_Procedure
 
 { Visibility=Private }
 External_Function DFUnit_WinAPI_AttachConsole "AttachConsole" Kernel32.dll ;
@@ -34,16 +25,38 @@ External_Function DFUnit_WinAPI_WriteConsole "WriteConsoleW" Kernel32.dll ;
     Pointer lpnCharsWritten ;
     Pointer lpReserved ;
     Returns Integer
+#ENDIF
+
+Procedure DFUnit_ConsoleExit Global Integer iOptExitCode
+    Integer iVoid
+#IFDEF IS$CROSS_PLATFORM
+    Move iOptExitCode to |VI109
+    Abort
+#ELSE
+    If (num_arguments > 0) ;
+        Move (DFUnit_WinAPI_ExitProcess(iOptExitCode)) to iVoid
+    Else
+        Move (DFUnit_WinAPI_ExitProcess(0)) to iVoid
+#ENDIF
+End_Procedure
 
 { Visibility=Private }
 Procedure DFUnit_ConsoleWrite Global String sText
+#IFDEF IS$CROSS_PLATFORM
+    Show sText
+#ELSE
     Integer iStatus
     WString wsText
     Move sText to wsText
     Move (DFUnit_WinAPI_WriteConsole(ghDFUnitConsoleHandle, wsText, SizeOfWString(wsText), 0, 0)) to iStatus
+#ENDIF
 End_Procedure
 
 { Visibility=Private }
 Procedure DFUnit_ConsoleWriteLn Global String sText
+#IFDEF IS$CROSS_PLATFORM
+    Showln sText
+#ELSE
     Send DFUnit_ConsoleWrite (sText+(Character(10))+(Character(13)))
+#ENDIF
 End_Procedure

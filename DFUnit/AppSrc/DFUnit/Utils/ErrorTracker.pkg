@@ -1,4 +1,3 @@
-Use VdfBase.pkg
 
 Use DFUnit\Globals.pkg
 
@@ -168,9 +167,13 @@ Class cDFUnitErrorTracker is a cObject
     {Visibility=Private}
     Procedure Tracker_UnExpectedError_Occured tDFUnitErrorInfo oError
         If (IsDebuggerPresent()) Begin
+#IFDEF IS$CROSS_PLATFORM
+            ErrorDisplay
+#ELSE
             Send DisableErrorTracker
             Error oError.iErrorCode oError.sErrText
             Send EnableErrorTracker
+#ENDIF
             Procedure_Return
         End
     End_Procedure
