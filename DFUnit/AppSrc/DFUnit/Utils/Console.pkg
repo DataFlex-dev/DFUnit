@@ -40,6 +40,14 @@ Procedure DFUnit_ConsoleExit Global Integer iOptExitCode
 #ENDIF
 End_Procedure
 
+Procedure DFUnit_ConsoleWait Global Integer iOptExitCode
+    Integer iVoid
+
+    If (RuntimePlatformId() <> C_RuntimePlaformId_WASM) Begin
+        Inkey iVoid
+    End
+End_Procedure
+
 { Visibility=Private }
 Procedure DFUnit_ConsoleWrite Global String sText
 #IFDEF IS$CROSS_PLATFORM

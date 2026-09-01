@@ -43,6 +43,7 @@ Class cDFUnitTestApplication is a cDFUnitFixture
         
         Property Boolean pbAutoRun True
         Property Boolean pbAutoRunTests True
+        Property Boolean pbConsoleWait False
 #IFNDEF IS$CROSS_PLATFORM
         Property Boolean pbUseUIIfInDebugger True
         Property Boolean pbUseUI True
@@ -128,6 +129,10 @@ Class cDFUnitTestApplication is a cDFUnitFixture
         End_Object
         Send AddReporter oConsoleReporter
         Send ManualRunTests
+
+        If (pbConsoleWait(Self)) Begin
+            Send DFUnit_ConsoleWait
+        End
 
         If (TestsSucceeded(Self)) Begin
             Send DFUnit_ConsoleExit 0
