@@ -4,7 +4,7 @@ Use System\FileSystem.pkg
 Use seq_chnl.pkg
 #ENDIF
 
-Use DFUNit\Results\ResultCollector.pkg
+Use DFUnit\Results\ResultCollector.pkg
 
 Define XML_NEWLINE_REPLACE for "&#10;"
 

@@ -152,7 +152,7 @@ Class cDFUnitTestApplication is a cDFUnitFixture
         End
         Send ManualRunTests
 
-        If (pbConsoleWait(Self)) Begin
+        If (IsDebuggerPresent() or pbConsoleWait(Self)) Begin
             Send DFUnit_ConsoleWait
         End
 

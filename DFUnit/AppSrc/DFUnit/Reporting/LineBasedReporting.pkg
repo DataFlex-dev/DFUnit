@@ -1,7 +1,7 @@
 #IFDEF IS$CROSS_PLATFORM
 Use System\Compat\Rgb.pkg
 #ELSE
-Use RGB.pkg
+Use Rgb.pkg
 #ENDIF
 
 Use DFUnit\Testing\Test.pkg

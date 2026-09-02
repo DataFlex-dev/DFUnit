@@ -1,4 +1,4 @@
-Use DFClient.pkg
+Use Dfclient.pkg
 Use DFUnit\Reporting\ReporterManager.pkg
 Use DFUnit\Reporting\Reporters\UIListReporter.pkg
 
