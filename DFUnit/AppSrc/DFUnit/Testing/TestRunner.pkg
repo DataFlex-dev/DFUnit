@@ -84,6 +84,7 @@ Class cDFUnitTestRunner_Mixin is a Mixin
         Set phCurrentTest to 0
         Set pulCurrentTest_AssertsFailed to 0
         Set pulCurrentTest_AssertsSucceeded to 0
+        Set pulCurrentTest_Errors to 0
     End_Procedure
     
     { Visibility=Private }
