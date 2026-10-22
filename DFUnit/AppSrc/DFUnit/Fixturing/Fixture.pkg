@@ -3,7 +3,6 @@ Use DFUnit\Testing\AssertArray.pkg
 Use DFUnit\Testing\TestCollector.pkg
 Use DFUnit\Fixturing\FixtureCollector.pkg
 
-Use DFUnit\Utils\Objects.pkg
 
 Class cDFUnitFixture is a cObject
     Import_Class_Protocol cDFUnitAssert_Mixin
@@ -31,6 +30,18 @@ Class cDFUnitFixture is a cObject
         End
         Else Begin
             Function_Return (Object_Label(Self))
+        End
+    End_Function
+
+    { Visibility=Private }
+    Function FullFixtureName Returns String
+        String sPrev
+        Delegate Get FullFixtureName to sPrev
+        If (SizeOfString(sPrev)) Begin
+            Function_Return (sPrev + "." + (FixtureName(Self)))
+        End
+        Else Begin
+            Function_Return (FixtureName(Self))
         End
     End_Function
     

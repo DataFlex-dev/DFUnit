@@ -3,6 +3,11 @@
     "df": 26.0,
     "package": {
         "icon": "DFUnit.png",
-        "version": "1.0.1"
+        "includeFiles": [
+            "CHANGELOG.md"
+        ],
+        "version": "1.1.0",
+        "license": "MIT",
+        "licenseFile": "LICENSE.txt"
     }
 }

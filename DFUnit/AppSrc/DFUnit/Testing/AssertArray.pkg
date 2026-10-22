@@ -1,10 +1,5 @@
-﻿Use VdfBase.pkg
-Use Winkern.pkg
 
 Use DFUnit\Globals.pkg
-Use DFUnit\Utils\Debugger.pkg
-Use DFUnit\Utils\Objects.pkg
-Use DFUnit\CallRecording.pkg
 
 Register_Function IntArrToStrArr Integer[] In Returns String[]
 
@@ -241,6 +236,7 @@ Class cDFUnitAssertArray_Mixin is a Mixin
         Send AssertNotEqFailed (IntArrToStrArr(Self, Expected)) (IntArrToStrArr(Self, Actual)) (If(num_arguments > 2, sOptAssertMessage, ""))
     End_Procedure
     
+#IFNDEF IS$CROSS_PLATFORM
     Procedure AssertTSArrAreEqual TimeSpan[] Expected TimeSpan[] Actual String sOptAssertMessage
         Integer i iEqualCount
         
@@ -269,6 +265,7 @@ Class cDFUnitAssertArray_Mixin is a Mixin
 
         Send AssertNotEqFailed (IntArrToStrArr(Self, Expected)) (IntArrToStrArr(Self, Actual)) (If(num_arguments > 2, sOptAssertMessage, ""))
     End_Procedure
+#ENDIF
     
     Procedure AssertEqFailed String[] Expected String[] Actual String sOptAssertMessage
         String[1] asMessages
@@ -365,6 +362,7 @@ Class cDFUnitAssertArray_Mixin is a Mixin
         Function_Return saOut
     End_Function
     
+#IFNDEF IS$CROSS_PLATFORM
     Function TSArrToStrArr TimeSpan[] In Returns String[]
         Integer i
         String[] saOut
@@ -375,4 +373,5 @@ Class cDFUnitAssertArray_Mixin is a Mixin
         
         Function_Return saOut
     End_Function
+#ENDIF
 End_Class

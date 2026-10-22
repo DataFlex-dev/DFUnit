@@ -51,6 +51,10 @@ Class cDFUnitResultCollector_Mixin is a Mixin
         { Visibility=Private }
         Property tDFUnitTestResult[] paTestStack
     End_Procedure
+
+    Function SupportsOutputToFile Returns Boolean
+        Function_Return False
+    End_Function
     
     Function ResultOfFixture Handle hFixture Returns tDFUnitFixtureResult
         Integer iIndex

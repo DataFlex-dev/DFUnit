@@ -2,7 +2,6 @@
 Use DFUnit\Testing\Assert.pkg
 Use DFUnit\Testing\AssertArray.pkg
 
-Use DFUnit\Utils\Objects.pkg
 
 Class cDFUnitTest is a cObject
     Import_Class_Protocol cDFUnitAssert_Mixin
@@ -27,6 +26,18 @@ Class cDFUnitTest is a cObject
         End
         Else Begin
             Function_Return (Object_Label(Self))
+        End
+    End_Function
+
+    { Visibility=Private }
+    Function FullTestName Returns String
+        String sPrev
+        Delegate Get FullFixtureName to sPrev
+        If (SizeOfString(sPrev)) Begin
+            Function_Return (sPrev + "." + (TestName(Self)))
+        End
+        Else Begin
+            Function_Return (TestName(Self))
         End
     End_Function
     
