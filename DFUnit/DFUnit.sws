@@ -3,6 +3,9 @@
     "df": 26.0,
     "package": {
         "icon": "DFUnit.png",
+        "includeFiles": [
+            "CHANGELOG.md"
+        ],
         "version": "1.1.0"
     }
 }
