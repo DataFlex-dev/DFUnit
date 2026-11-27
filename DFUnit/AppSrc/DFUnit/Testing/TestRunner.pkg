@@ -85,6 +85,9 @@ Class cDFUnitTestRunner_Mixin is a Mixin
         Set phCurrentTest to 0
         Set pulCurrentTest_AssertsFailed to 0
         Set pulCurrentTest_AssertsSucceeded to 0
+        // The error count is per test too. It was never cleared, so after one test had an unexpected
+        // error every later test was reported as failed and the error total kept growing.
+        Set pulCurrentTest_Errors to 0
     End_Procedure
     
     { Visibility=Private }

@@ -6,7 +6,110 @@ Class cDFUnitFixtureRunner_Mixin is a Mixin
     Procedure Define_cDFUnitFixtureRunner_Mixin
         { Visibility=Private }
         Property Handle phCurrentFixture 0
+        // The --filter texts: a test runs when its full name contains one of them. Empty = all tests.
+        Property String[] pasTestFilters
     End_Procedure
+    
+    // ---- Test names and the --filter option ------------------------------------------------------
+
+    // The path of a fixture: the names of the fixtures it lies in, outermost first, then its own, with
+    // " / " between them. The test application ("All Tests") is not part of it. A fixture can sit inside
+    // other objects that are not fixtures; those are skipped.
+    { Visibility=Private }
+    Function FixturePath Handle hFixture Returns String
+        String sPath
+        Handle hObj
+        Boolean bFixture
+        Move hFixture to hObj
+        While ((hObj <> 0) and (hObj <> ghoTestApplication) and (hObj <> Desktop))
+            Get IsObjectOfClass of hObj (RefClass(cDFUnitFixture)) to bFixture
+            If (bFixture) Begin
+                If (sPath = "") Begin
+                    Move (FixtureName(hObj)) to sPath
+                End
+                Else Begin
+                    Move (FixtureName(hObj) + " / " + sPath) to sPath
+                End
+            End
+            Move (Parent(hObj)) to hObj
+        Loop
+        Function_Return sPath
+    End_Function
+
+    // The full name of a test, as --list prints it and --filter matches it: "<fixture path> / <test>".
+    { Visibility=Private }
+    Function TestFullName Handle hFixture Handle hTest Returns String
+        String sPath
+        Get FixturePath hFixture to sPath
+        If (sPath = "") Begin
+            Function_Return (TestName(hTest))
+        End
+        Function_Return (sPath + " / " + TestName(hTest))
+    End_Function
+
+    // True when no filter is set, or when the test's full name contains one of the filter texts. The
+    // comparison ignores case, and an underscore counts as a space - test names are made from procedure
+    // names with the underscores turned into spaces, so both spellings select the same test.
+    { Visibility=Private }
+    Function TestIsSelected Handle hFixture Handle hTest Returns Boolean
+        String[] asFilters
+        String sName sFilter
+        Integer iIterator
+        Get pasTestFilters to asFilters
+        If (SizeOfArray(asFilters) = 0) Begin
+            Function_Return True
+        End
+        Get TestFullName hFixture hTest to sName
+        Move (Lowercase(Replaces("_", sName, " "))) to sName
+        For iIterator from 0 to (SizeOfArray(asFilters) - 1)
+            Move (Lowercase(Replaces("_", asFilters[iIterator], " "))) to sFilter
+            If (sName contains sFilter) Begin
+                Function_Return True
+            End
+        Loop
+        Function_Return False
+    End_Function
+
+    { Visibility=Private }
+    Function FixtureHasSelectedTests Handle hFixture Returns Boolean
+        Handle[] aTests aFixtures
+        Integer iIterator
+        Get Tests of hFixture to aTests
+        For iIterator from 0 to (SizeOfArray(aTests) - 1)
+            If (TestIsSelected(Self, hFixture, aTests[iIterator])) Begin
+                Function_Return True
+            End
+        Loop
+        Get Fixtures of hFixture to aFixtures
+        For iIterator from 0 to (SizeOfArray(aFixtures) - 1)
+            If (FixtureHasSelectedTests(Self, aFixtures[iIterator])) Begin
+                Function_Return True
+            End
+        Loop
+        Function_Return False
+    End_Function
+
+    // The full names of the selected tests, in the order they run.
+    { Visibility=Private }
+    Function SelectedTestNames Handle hFixture Returns String[]
+        String[] asNames asSub
+        Handle[] aTests aFixtures
+        Integer iIterator iSub
+        Get Fixtures of hFixture to aFixtures
+        For iIterator from 0 to (SizeOfArray(aFixtures) - 1)
+            Get SelectedTestNames aFixtures[iIterator] to asSub
+            For iSub from 0 to (SizeOfArray(asSub) - 1)
+                Move asSub[iSub] to asNames[SizeOfArray(asNames)]
+            Loop
+        Loop
+        Get Tests of hFixture to aTests
+        For iIterator from 0 to (SizeOfArray(aTests) - 1)
+            If (TestIsSelected(Self, hFixture, aTests[iIterator])) Begin
+                Move (TestFullName(Self, hFixture, aTests[iIterator])) to asNames[SizeOfArray(asNames)]
+            End
+        Loop
+        Function_Return asNames
+    End_Function
     
     { Visibility=Private }
     Procedure RunWholeFixture Handle hFixture
@@ -48,33 +151,39 @@ Class cDFUnitFixtureRunner_Mixin is a Mixin
         Send Reporters_EndFixture Self
     End_Procedure
     
+    // A fixture is run only when it, or a fixture below it, has a test that the filter selects - so a
+    // fixture with nothing to run does not run its SetupOneTime either. Without a filter everything runs.
     { Visibility=Private }
     Procedure RunSubFixtures Handle hFixture
         Boolean bOk
         Integer iIterator
         Handle[] aFixtures
         Get Fixtures of hFixture to aFixtures
-        
+
         For iIterator from 0 to (SizeOfArray(aFixtures) - 1)
-            Send RunWholeFixture aFixtures[iIterator]
+            If (FixtureHasSelectedTests(Self, aFixtures[iIterator])) Begin
+                Send RunWholeFixture aFixtures[iIterator]
+            End
         Loop
     End_Procedure
-    
+
     { Visibility=Private }
     Procedure RunAllTestsInFixture Handle hFixture
         Integer iIterator
         Handle hTest
         Handle[] aTests
         Get Tests of hFixture to aTests
-        
+
         Set phCurrentFixture to hFixture
-        
+
         For iIterator from 0 to (SizeOfArray(aTests) - 1)
             Move aTests[iIterator] to hTest
-            Send RunTestInFixture hFixture aTests[iIterator]
+            If (TestIsSelected(Self, hFixture, hTest)) Begin
+                Send RunTestInFixture hFixture aTests[iIterator]
+            End
         Loop
     End_Procedure
-    
+
     { Visibility=Private }
     Function Current_Fixture Returns Handle
         Function_Return (phCurrentFixture(Self))

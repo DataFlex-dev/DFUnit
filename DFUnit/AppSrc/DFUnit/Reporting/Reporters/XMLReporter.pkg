@@ -1,153 +1,239 @@
 Use seq_chnl.pkg
-
 Use DFUNit\Results\ResultCollector.pkg
 
-Define XML_NEWLINE_REPLACE for "&#10;"
+// The JUnit XML report (-o / --output). The shape is the one build servers read (Jenkins, GitLab, Azure
+// DevOps, and the GitHub test-report actions):
+//
+//   <testsuites name tests failures errors time>
+//     <testsuite name tests failures errors skipped time>      one per fixture that ran tests - FLAT, a
+//       <testcase classname name assertions time>              fixture inside a fixture is a suite of its
+//         <failure message type>text</failure>                 own named by its path ("A / B"); nested
+//         <error message type>text</error>                     suites are not read by every tool
+//       </testcase>
+//     </testsuite>
+//   </testsuites>
+//
+// tests / failures / errors count TEST CASES, as JUnit does: a test with failed assertions is one failure,
+// a test with an unexpected error is one error. Every attribute value and text is escaped, so a message
+// with a quote, '<' or '&' keeps the file readable. Times are seconds with three decimals. Every number
+// goes through String(): SFormat writes an Integer 0 as an empty text.
 
-{ Visibility=Private }
+// Text made safe for an XML attribute value or element: the five special characters as entities, line
+// breaks and tabs as character references, and the other control characters (not allowed in XML 1.0)
+// left out.
 Function DFUnit_XmlEscape Global String sText Returns String
-    //  Escape XML metacharacters so test names and messages stay well-formed
-    //  inside double-quoted attributes. '&' MUST be replaced first, otherwise the
-    //  ampersands in the entities it produces would be escaped again.
+    Integer iChar
     Move (Replaces("&", sText, "&amp;")) to sText
     Move (Replaces("<", sText, "&lt;")) to sText
     Move (Replaces(">", sText, "&gt;")) to sText
     Move (Replaces('"', sText, "&quot;")) to sText
+    Move (Replaces("'", sText, "&apos;")) to sText
+    Move (Replaces(Character(13) + Character(10), sText, "&#10;")) to sText
+    Move (Replaces(Character(10), sText, "&#10;")) to sText
+    Move (Replaces(Character(13), sText, "&#10;")) to sText
+    Move (Replaces(Character(9), sText, "&#9;")) to sText
+    For iChar from 1 to 31
+        If (iChar <> 9 and iChar <> 10 and iChar <> 13) Begin
+            Move (Replaces(Character(iChar), sText, "")) to sText
+        End
+    Loop
     Function_Return sText
 End_Function
 
 Class cDFUnitXMLReporter is a cDFUnitResultCollector_Mixin
-    
+
     Procedure Construct_Object
         Property String psFileName "test_results.xml"
-        
+
         { Visibility=Private }
         Property Integer piChannel -1
-        
+
         Send Define_cDFUnitResultCollector_Mixin
     End_Procedure
-    
+
     {Visibility=Private}
     Procedure Write String sText
+#IF (!@ < 200)
+        // Before DataFlex 20 a string is not UTF-8; the declaration says windows-1252 for this file.
+        Write channel (piChannel(Self)) (ToAnsi(sText))
+#ELSE
         Write channel (piChannel(Self)) sText
+#ENDIF
     End_Procedure
-    
-    {Visibility=Private}
-    Procedure WriteTest tDFUnitTestResult oTestResult
-        String[] asMessages
-        TimeSpan tsTook
-        String sMessage sErrorExtenders sTime
-        Integer iIterator iMessageIterator iMaxIndex iMaxMessageIndex
-        
-        Move (oTestResult.dtEnded - oTestResult.dtStarted) to tsTook
-        If (SpanTotalSeconds(tsTook) = 0) Begin
-            Move ('time="0.' + String(SpanTotalMilliseconds(tsTook)) + '"') to sTime
-        End
-        Else Begin
-            Move ('time="' + String(SpanTotalSeconds(tsTook)) + "." + String(SpanMilliseconds(tsTook)) + '"') to sTime
-        End
 
-        Send Write (SFormat('<testcase name="%1" assertions="%2" %3>', DFUnit_XmlEscape(TestName(oTestResult.hTest)), oTestResult.ulFailedAssertions + oTestResult.ulSucceededAssertions, Replaces(",", sTime, ".")))
-        
+
+    // Milliseconds as seconds with three decimals - "0.004", "12.050" - whatever the decimal separator.
+    {Visibility=Private}
+    Function SecondsText Integer iMilliseconds Returns String
+        String sFraction
+        If (iMilliseconds < 0) Begin
+            Move 0 to iMilliseconds
+        End
+        Move (String(Mod(iMilliseconds, 1000))) to sFraction
+        Move (Right("00" + sFraction, 3)) to sFraction
+        Function_Return (String(iMilliseconds / 1000) + "." + sFraction)
+    End_Function
+
+    {Visibility=Private}
+    Function TestMilliseconds tDFUnitTestResult oTestResult Returns Integer
+        TimeSpan tsTook
+        Move (oTestResult.dtEnded - oTestResult.dtStarted) to tsTook
+        Function_Return (SpanTotalMilliseconds(tsTook))
+    End_Function
+
+    // The path of a fixture, as --list and --filter show it: "Outer / Inner".
+    {Visibility=Private}
+    Function SuiteName Handle hFixture Returns String
+        Function_Return (FixturePath(ghoTestApplication, hFixture))
+    End_Function
+
+    {Visibility=Private}
+    Procedure WriteTest tDFUnitTestResult oTestResult String sClassName
+        String sMessage sText sErrorExtenders
+        Integer iIterator iMessageIterator iMaxIndex iMaxMessageIndex
+
+        Send Write (SFormat('<testcase classname="%1" name="%2" assertions="%3" time="%4">', ;
+            DFUnit_XmlEscape(sClassName), DFUnit_XmlEscape(TestName(oTestResult.hTest)), ;
+            String(oTestResult.ulFailedAssertions + oTestResult.ulSucceededAssertions), ;
+            SecondsText(Self, TestMilliseconds(Self, oTestResult))))
+
         Move (SizeOfArray(oTestResult.aErrors) - 1) to iMaxIndex
         For iIterator from 0 to iMaxIndex
+            Move "" to sErrorExtenders
             If (oTestResult.aErrors[iIterator].bFatal) Begin
-                Move "Fatal" to sErrorExtenders
+                Move "Fatal " to sErrorExtenders
             End
             If (oTestResult.aErrors[iIterator].bUser) Begin
-                Move (If(Length(sErrorExtenders) = 0, "User", " User")) to sErrorExtenders
+                Move (sErrorExtenders + "User ") to sErrorExtenders
             End
-            
-            Move (SFormat("Unexpected %1 Error Occured:" + XML_NEWLINE_REPLACE, sErrorExtenders)) to sMessage
-            Move (Append(sMessage, (SFormat("Line: %1." + XML_NEWLINE_REPLACE, oTestResult.aErrors[iIterator].iErrLine)))) to sMessage
-            Move (Append(sMessage, (SFormat("Error Nr: %1." + XML_NEWLINE_REPLACE, oTestResult.aErrors[iIterator].iErrorCode)))) to sMessage
-            Move (Append(sMessage, "Error Message:" + XML_NEWLINE_REPLACE)) to sMessage
-            Move (Append(sMessage, ("'" + DFUnit_XmlEscape(oTestResult.aErrors[iIterator].sErrText) + "'." + XML_NEWLINE_REPLACE))) to sMessage
-            Move (Append(sMessage, "CallStack:" + XML_NEWLINE_REPLACE)) to sMessage
-            Move (Append(sMessage, DFUnit_XmlEscape(oTestResult.aErrors[iIterator].sCallStack))) to sMessage
-            
-            Move (Replaces("\n", sMessage, XML_NEWLINE_REPLACE)) to sMessage
-            Move (Replaces("\r\n", sMessage, XML_NEWLINE_REPLACE)) to sMessage
-            Move (Replaces(Character(10), sMessage, XML_NEWLINE_REPLACE)) to sMessage
-            
-            Send Write (SFormat('<error message="%1"></error>', sMessage))
+            Move ("Unexpected " + sErrorExtenders + "error " + String(oTestResult.aErrors[iIterator].iErrorCode) + ;
+                  ": " + oTestResult.aErrors[iIterator].sErrText) to sMessage
+            Move (sMessage + Character(10) + "Line: " + String(oTestResult.aErrors[iIterator].iErrLine)) to sText
+            Move (sText + Character(10) + "CallStack:" + Character(10) + oTestResult.aErrors[iIterator].sCallStack) to sText
+            Send Write (SFormat('<error message="%1" type="%2">%3</error>', DFUnit_XmlEscape(sMessage), ;
+                ("DataFlex error " + String(oTestResult.aErrors[iIterator].iErrorCode)), DFUnit_XmlEscape(sText)))
         Loop
-        
+
+        // Each failed assertion's messages are read straight from the result, never copied into
+        // one reused String[] local. Most asserts pass a fixed-size String[1]; once that had been
+        // copied into the local, copying the next assertion's array of another size (the
+        // AssertArrayAreEqual lines) raised Error 4381 "Cannot convert array of 'STRING[]' to
+        // array of 'STRING[1]'" - a modal error box on a -c build run - and the second
+        // <failure> repeated the first one's text.
         Move (SizeOfArray(oTestResult.aFailedAssertions) - 1) to iMaxIndex
         For iIterator from 0 to iMaxIndex
-            Move (DFUnit_XmlEscape(oTestResult.aFailedAssertions[iIterator].sAssertMessage) + XML_NEWLINE_REPLACE) to sMessage
-
-            Move oTestResult.aFailedAssertions[iIterator].asMessages to asMessages
-            Move (SizeOfArray(asMessages) - 1) to iMaxMessageIndex
+            Move oTestResult.aFailedAssertions[iIterator].sAssertMessage to sMessage
+            Move sMessage to sText
+            Move (SizeOfArray(oTestResult.aFailedAssertions[iIterator].asMessages) - 1) to iMaxMessageIndex
             For iMessageIterator from 0 to iMaxMessageIndex
-                Move (Append(sMessage, DFUnit_XmlEscape(asMessages[iMessageIterator]) + XML_NEWLINE_REPLACE)) to sMessage
+                If (sText = "") Begin
+                    Move oTestResult.aFailedAssertions[iIterator].asMessages[iMessageIterator] to sText
+                End
+                Else Begin
+                    Move (sText + Character(10) + oTestResult.aFailedAssertions[iIterator].asMessages[iMessageIterator]) to sText
+                End
             Loop
-            
-            Move (Replaces("\n", sMessage, XML_NEWLINE_REPLACE)) to sMessage
-            Move (Replaces("\r\n", sMessage, XML_NEWLINE_REPLACE)) to sMessage
-            Move (Replaces(Character(10), sMessage, XML_NEWLINE_REPLACE)) to sMessage
-            
-            Send Write (SFormat('<failure message="%1"></failure>', sMessage))
+            If (sMessage = "") Begin
+                Move sText to sMessage
+            End
+            Send Write (SFormat('<failure message="%1" type="AssertionFailure">%2</failure>', ;
+                DFUnit_XmlEscape(sMessage), DFUnit_XmlEscape(sText)))
         Loop
-        
+
         Send Write '</testcase>'
     End_Procedure
-    
+
+    // One <testsuite> for the fixture when it ran tests, then one for each fixture inside it.
     {Visibility=Private}
     Procedure WriteFixture Handle hFixture
-        String sFixtureName
         tDFUnitFixtureResult oFixtureResult
+        Integer iIterator iMaxIndex iFailures iErrors iMilliseconds
+        String sName
+
         Get ResultOfFixture hFixture to oFixtureResult
-        
-        Get FixtureName of hFixture to sFixtureName
-        Send Write (SFormat('<testsuite name="%1" errors="%2" failures="%3">', DFUnit_XmlEscape(sFixtureName), oFixtureResult.ulTotalErrors, oFixtureResult.ulTotalFailedAssertions))
-        
-        Integer iIterator iMaxIndex
+        Move (SizeOfArray(oFixtureResult.aTestResults) - 1) to iMaxIndex
+        If (iMaxIndex >= 0) Begin
+            Get SuiteName hFixture to sName
+            If (sName = "") Begin
+                Move (FixtureName(hFixture)) to sName
+            End
+            For iIterator from 0 to iMaxIndex
+                If (SizeOfArray(oFixtureResult.aTestResults[iIterator].aErrors) > 0) Begin
+                    Increment iErrors
+                End
+                Else If (oFixtureResult.aTestResults[iIterator].ulFailedAssertions > 0) Begin
+                    Increment iFailures
+                End
+                Move (iMilliseconds + TestMilliseconds(Self, oFixtureResult.aTestResults[iIterator])) to iMilliseconds
+            Loop
+            Send Write (SFormat('<testsuite name="%1" tests="%2" failures="%3" errors="%4" skipped="0" time="%5">', ;
+                DFUnit_XmlEscape(sName), String(iMaxIndex + 1), String(iFailures), String(iErrors), SecondsText(Self, iMilliseconds)))
+            For iIterator from 0 to iMaxIndex
+                Send WriteTest oFixtureResult.aTestResults[iIterator] sName
+            Loop
+            Send Write '</testsuite>'
+        End
+
         Move (SizeOfArray(oFixtureResult.ahChildFixtures) - 1) to iMaxIndex
         For iIterator from 0 to iMaxIndex
             Send WriteFixture oFixtureResult.ahChildFixtures[iIterator]
         Loop
-        
-        Move (SizeOfArray(oFixtureResult.aTestResults) - 1) to iMaxIndex
-        For iIterator from 0 to iMaxIndex
-            Send WriteTest oFixtureResult.aTestResults[iIterator]
+    End_Procedure
+
+    // The totals of a fixture and every fixture inside it: test cases, failed ones, ones with an error,
+    // and milliseconds.
+    {Visibility=Private}
+    Procedure AddTotals Handle hFixture Integer ByRef iTests Integer ByRef iFailures Integer ByRef iErrors Integer ByRef iMilliseconds
+        tDFUnitFixtureResult oFixtureResult
+        Integer iIterator
+        Get ResultOfFixture hFixture to oFixtureResult
+        For iIterator from 0 to (SizeOfArray(oFixtureResult.aTestResults) - 1)
+            Increment iTests
+            If (SizeOfArray(oFixtureResult.aTestResults[iIterator].aErrors) > 0) Begin
+                Increment iErrors
+            End
+            Else If (oFixtureResult.aTestResults[iIterator].ulFailedAssertions > 0) Begin
+                Increment iFailures
+            End
+            Move (iMilliseconds + TestMilliseconds(Self, oFixtureResult.aTestResults[iIterator])) to iMilliseconds
         Loop
-        
-        Send Write '</testsuite>'
+        For iIterator from 0 to (SizeOfArray(oFixtureResult.ahChildFixtures) - 1)
+            Send AddTotals oFixtureResult.ahChildFixtures[iIterator] (&iTests) (&iFailures) (&iErrors) (&iMilliseconds)
+        Loop
     End_Procedure
 
     {Visibility=Private}
     Procedure Finish Handle hEnv
-        Forward Send Finish
-        
+        Integer iChannel iTests iFailures iErrors iMilliseconds
         Boolean bExists
         String sFileName
+
+        Forward Send Finish
         Get psFileName to sFileName
         File_Exist sFileName bExists
         If bExists Begin
             EraseFile sFileName
         End
-        
-        Integer iChannel
+
         Move (Seq_New_Channel()) to iChannel
         Direct_Output channel iChannel ('BINARY: ' + sFileName)
         Set piChannel to iChannel
-        
+
+#IF (!@ < 200)
+        Send Write '<?xml version="1.0" encoding="windows-1252"?>'
+#ELSE
         Send Write '<?xml version="1.0" encoding="UTF-8"?>'
-        Send Write '<testsuites>'
-        
+#ENDIF
+        Send AddTotals ghoTestApplication (&iTests) (&iFailures) (&iErrors) (&iMilliseconds)
+        Send Write (SFormat('<testsuites name="%1" tests="%2" failures="%3" errors="%4" time="%5">', ;
+            DFUnit_XmlEscape(FixtureName(ghoTestApplication)), String(iTests), String(iFailures), String(iErrors), SecondsText(Self, iMilliseconds)))
+
         Send WriteFixture ghoTestApplication
-        
+
         Send Write '</testsuites>'
-        
+
         Close_Output channel iChannel
-        Send Seq_Release_Channel iChannel
-        //  Restore the current output channel to the default (channel 1). After
-        //  Close_Output the global "current output channel" still points at the
-        //  channel we just released; when a console run exits via ExitProcess the
-        //  runtime dereferences that dangling pointer and intermittently crashes.
-        Append_Output Channel 1
         Set piChannel to -1
     End_Procedure
-    
+
 End_Class

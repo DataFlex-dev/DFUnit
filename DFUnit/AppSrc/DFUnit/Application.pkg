@@ -39,6 +39,8 @@ Class cDFUnitTestApplication is a cDFUnitFixture
         Property Boolean pbAutoRunTests True
         Property Boolean pbUseUIIfInDebugger True
         Property Boolean pbUseUI True
+        // -l / --list: print the names of the (selected) tests and exit, without running them.
+        Property Boolean pbListTests False
     End_Procedure
     
     Procedure End_Construct_Object
@@ -64,7 +66,27 @@ Class cDFUnitTestApplication is a cDFUnitFixture
                     Send DFUnit_ConsoleWrite DFUNIT_VERSION
                     Send DFUnit_ConsoleWrite " - "
                     Send DFUnit_ConsoleWriteLn DFUNIT_SUB_VERSION
+                    Send DFUnit_ConsoleWriteLn ""
+                    Send DFUnit_ConsoleWriteLn "  -c, --console        run the tests without a window; exit 0 when all pass, -1 when not"
+                    Send DFUnit_ConsoleWriteLn "  -o, --output <file>  also write the results as JUnit XML, for a build server"
+                    Send DFUnit_ConsoleWriteLn "  -f, --filter <text>  run only the tests whose name contains <text>; several texts"
+                    Send DFUnit_ConsoleWriteLn "                       separated by ';', or the option repeated, select more tests"
+                    Send DFUnit_ConsoleWriteLn "  -l, --list           print the names of the tests (those --filter selects) and exit"
+                    Send DFUnit_ConsoleWriteLn "  -g, --gui            show the test-runner window"
+                    Send DFUnit_ConsoleWriteLn "  -n, --no-autorun     open the window without running the tests"
+                    Send DFUnit_ConsoleWriteLn "  -h, --help           this text"
                     Send DFUnit_ConsoleExit 0
+                    Case Break
+                Case (sArgument = "-l" or sArgument = "--list")
+                    Set pbListTests to True
+                    Case Break
+                Case (sArgument = "-f" or sArgument = "--filter")
+                    If (iArgCount - iIndex <= 0) Begin
+                        Send DFUnit_ConsoleWriteLn "No filter text has been specified."
+                        Send DFUnit_ConsoleExit -1
+                    End
+                    Increment iIndex
+                    Send AddTestFilters (Argument(hoCommandLine, iIndex))
                     Case Break
                 Case (sArgument = "-c" or sArgument = "--console")
                     Set pbUseUI to False
@@ -99,9 +121,47 @@ Class cDFUnitTestApplication is a cDFUnitFixture
         Loop
     End_Procedure
     
+    // Adds the texts of one --filter argument: several may be given in one, separated by ';'.
+    { Visibility=Private }
+    Procedure AddTestFilters String sArgument
+        String[] asFilters asParts
+        Integer iIterator
+        String sPart
+        Get pasTestFilters to asFilters
+        Move (StrSplitToArray(sArgument, ";")) to asParts
+        For iIterator from 0 to (SizeOfArray(asParts) - 1)
+            Move (Trim(asParts[iIterator])) to sPart
+            If (sPart <> "") Begin
+                Move sPart to asFilters[SizeOfArray(asFilters)]
+            End
+        Loop
+        Set pasTestFilters to asFilters
+    End_Procedure
+
+    // -l / --list: one line per selected test, then the count, and exit 0 - nothing is run.
+    { Visibility=Private }
+    Procedure ListTests
+        String[] asNames
+        Integer iIterator
+        Get SelectedTestNames Self to asNames
+        For iIterator from 0 to (SizeOfArray(asNames) - 1)
+            Send DFUnit_ConsoleWriteLn asNames[iIterator]
+        Loop
+        Send DFUnit_ConsoleWriteLn (String(SizeOfArray(asNames)) + " test(s)")
+        Send DFUnit_ConsoleExit 0
+    End_Procedure
+
     Procedure AutoRun
         Boolean bUseUI
         Send ParseEnvironmentFromCommandLine
+        If (pbListTests(Self)) Begin
+            Send ListTests
+        End
+        // A filter that selects nothing is a mistake (a typo in a build script), never a green build.
+        If ((SizeOfArray(pasTestFilters(Self)) > 0) and (FixtureHasSelectedTests(Self, Self) = False)) Begin
+            Send DFUnit_ConsoleWriteLn "No test matches the filter. Use --list to see the test names."
+            Send DFUnit_ConsoleExit -1
+        End
         
         Get pbUseUI to bUseUI
         
