@@ -112,12 +112,31 @@ End_Procedure
 
 ### Console options
 
-`--help (-h)`, will print the DFUnit framework information.
+`--help (-h)`, prints the DFUnit framework information and the options.
 
-`--console (-c)`, will override the `pbUseUI` to False.
+`--console (-c)`, runs the tests without the UI (overrides `pbUseUI` to False). The program exits with 0 when
+every test passed, and -1 when a test failed or had an unexpected error.
 
-`--gui (-g)`, will override the `pbUseUI` to True.
+`--gui (-g)`, overrides `pbUseUI` to True.
 
-`--no-autorun (-n)`, will override the `pbAutoRunTests` to False.
+`--no-autorun (-n)`, overrides `pbAutoRunTests` to False.
 
-`--output (-o)`, will output the test data to the designated file **(JUnit-XML only for now)**.
+`--output (-o) <file>`, also writes the results to the file as **JUnit XML**, the format build servers read
+(Jenkins, GitLab, Azure DevOps, the GitHub test-report actions): one `<testsuite>` per fixture, named by its
+path, with `tests`, `failures`, `errors` and `time`, and a `<testcase>` with `classname` and `name` per test. A
+test with failed assertions counts as one failure, a test with an unexpected error as one error.
+
+`--filter (-f) <text>`, runs only the tests whose full name contains `<text>` (case does not matter, and `_`
+matches a space, so a procedure name works too). Several texts are separated by `;`, or the option is given
+again. A fixture with no selected test is skipped completely, its one-time setup included. A filter that
+selects nothing ends the run with -1, so a typo in a build script never gives a green build.
+
+`--list (-l)`, prints the full names of the tests - or of the tests that `--filter` selects - in the order they
+run, and exits without running them. A full name is the path of fixtures and the test, for example
+`Leap_Year_Spec / A_year_is_a_leap_year / If it is divisible by 400`; it is what `--filter` matches.
+
+```
+RunAllTests.exe -c -o test_results.xml          all tests, JUnit XML for the build server
+RunAllTests.exe -c -f "leap_year;divisible"     only the tests with either text in the name
+RunAllTests.exe -l -f leap_year                 list them first
+```
